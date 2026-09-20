@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>3D Minimal Calculator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1118;
+      --card: #1b2030;
+      --key: #2a3147;
+      --key-op: #3a4f8f;
+      --text: #f5f7ff;
+      --muted: #9aa4c7;
+      --accent: #7fb1ff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 30% 20%, #1a2140, var(--bg));
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+    }
+
+    .calc {
+      width: min(92vw, 340px);
+      padding: 18px;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #202842, #161b2b);
+      box-shadow: 16px 16px 32px #0b0e16, -10px -10px 24px #2a3354;
+    }
+
+    .display {
+      width: 100%;
+      margin-bottom: 14px;
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #111726;
+      box-shadow: inset 5px 5px 12px #0a0f1a, inset -4px -4px 10px #242c44;
+      color: var(--text);
+      font-size: 1.5rem;
+      text-align: right;
+    }
+
+    .hint {
+      margin: -8px 2px 12px;
+      font-size: .78rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 1rem;
+      color: var(--text);
+      cursor: pointer;
+      background: var(--key);
+      box-shadow: 6px 6px 12px #121827, -4px -4px 10px #333d5c;
+      transition: transform .04s ease;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: inset 4px 4px 8px #151d2f, inset -3px -3px 7px #3a4669;
+    }
+
+    .op { background: var(--key-op); }
+    .equal { background: var(--accent); color: #111a31; font-weight: 700; }
+    .wide { grid-column: span 2; }
+  </style>
+</head>
+<body>
+  <main class="calc">
+    <input id="display" class="display" readonly value="0">
+    <p class="hint">Minimal 3D Java Calculator</p>
+    <section class="keys">
+      <button data-action="clear" class="wide">C</button>
+      <button data-op="/" class="op">÷</button>
+      <button data-op="*" class="op">×</button>
+
+      <button data-num="7">7</button><button data-num="8">8</button><button data-num="9">9</button><button data-op="-" class="op">−</button>
+      <button data-num="4">4</button><button data-num="5">5</button><button data-num="6">6</button><button data-op="+" class="op">+</button>
+      <button data-num="1">1</button><button data-num="2">2</button><button data-num="3">3</button><button data-action="calc" class="equal">=</button>
+      <button data-num="0" class="wide">0</button><button data-num=".">.</button>
+    </section>
+  </main>
+
+  <script>
+    const display = document.getElementById('display');
+    let left = null;
+    let op = null;
+    let shouldReset = false;
+
+    const setDisplay = (value) => display.value = String(value);
+
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (btn.dataset.num !== undefined) {
+          if (display.value === '0' || shouldReset) {
+            setDisplay(btn.dataset.num === '.' ? '0.' : btn.dataset.num);
+            shouldReset = false;
+          } else if (!(btn.dataset.num === '.' && display.value.includes('.'))) {
+            setDisplay(display.value + btn.dataset.num);
+          }
+          return;
+        }
+
+        if (btn.dataset.action === 'clear') {
+          left = null;
+          op = null;
+          shouldReset = false;
+          setDisplay('0');
+          return;
+        }
+
+        if (btn.dataset.op) {
+          left = Number(display.value);
+          op = btn.dataset.op;
+          shouldReset = true;
+          return;
+        }
+
+        if (btn.dataset.action === 'calc' && op !== null && left !== null) {
+          const right = Number(display.value);
+          const res = await fetch(`/api/calculate?a=${encodeURIComponent(left)}&b=${encodeURIComponent(right)}&op=${encodeURIComponent(op)}`);
+          const json = await res.json();
+          if (json.error) {
+            setDisplay('Error');
+          } else {
+            setDisplay(Number.isFinite(json.result) ? Number(json.result).toString() : 'Error');
+            left = json.result;
+          }
+          op = null;
+          shouldReset = true;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
